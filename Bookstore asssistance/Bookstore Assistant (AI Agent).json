@@ -1,0 +1,250 @@
+{
+  "name": "Bookstore Assistant (AI Agent)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ea794e54-cbac-4980-882c-fdedb02beae8",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -720,
+        80
+      ],
+      "webhookId": "c7d8e9f0-1111-2222-3333-444455556666"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=You are a friendly, knowledgeable bookstore assistant for our independent shop.\n\n## Your role\n- Help customers discover books, authors, and genres; answer questions about our store calmly and clearly.\n- **Tone & sentiment:** Notice whether the customer sounds excited, frustrated, sad, or rushed. Acknowledge their mood briefly and match a supportive tone (never preachy). If they seem upset about stock or wait times, be empathetic and offer practical next steps.\n- **Formatting:** Use short sections with **bold** headings, bullet lists where helpful, and clear paragraphs. Avoid walls of text.\n\n## Capabilities (use tools when they genuinely help)\n1. **Store events:** Use the calendar tool to list or check upcoming author readings, signings, clubs, or story times when asked about dates, schedules, or \"what's on\".\n2. **Recommendations:** Suggest titles based on preferences, mood, age group, and reading habits. You may combine Wikipedia and web search for up-to-date context about books and authors.\n3. **Book availability:** We do not have a live inventory tool in this workflow. If asked whether a book is in stock, be honest: offer to check with staff, suggest ordering, and never invent stock numbers.\n4. **Real-time / news:** Use web search for current information (new releases, prizes, author news).\n5. **Wikipedia:** Use for balanced background on authors, works, and literary topics.\n6. **URLs:** When the user provides a link to a review, retailer page, or article, use the page-fetch tool to retrieve readable text, then give a concise summary and cite that it came from that page.\n\n## Guardrails\n- Do not claim discounts, prices, or stock levels unless provided in tool results or the user message.\n- If unsure, say so and suggest staff follow-up.\n- Today is {{ $now.format('cccc') }}, {{ $now.toISO() }}."
+        }
+      },
+      "id": "0f0fac1c-375c-4d1b-9ef1-905d83878d57",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -480,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "temperature": 0.35
+        }
+      },
+      "id": "ec529928-b9f5-4439-8d0e-d61cb97a764c",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        368
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "eDTTjgKShF705SLu",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+        "contextWindowLength": 15
+      },
+      "id": "ddd46a6d-78e9-4965-a8a6-4b62b9407976",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -240,
+        352
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c5be77e2-2cbe-493b-8fdb-5c18bcc782e1",
+      "name": "Wikipedia",
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "gl": "us",
+          "hl": "en"
+        }
+      },
+      "id": "c70df153-f21b-4735-8010-bc785edeefb9",
+      "name": "Web_Search_SerpAPI",
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        64
+      ],
+      "credentials": {
+        "serpApi": {
+          "id": "of98Ytgkil0AEq3W",
+          "name": "SerpAPI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Fetches the main readable text from a public web page (e.g. book description, review, or article). Provide the full page URL (https://...). Use when the user shares a link or asks to summarize a specific webpage. Returns plain text you can summarize.",
+        "url": "https://r.jina.ai/{target_url}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "target_url",
+              "description": "Full URL of the page to read, including scheme (e.g. https://www.example.com/review)"
+            }
+          ]
+        },
+        "optimizeResponse": true
+      },
+      "id": "ed2e4781-27cd-4f6c-aa70-bd4f0118b43f",
+      "name": "URL_Page_Fetcher",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        -112,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "xxx@gmail.com",
+          "mode": "list",
+          "cachedResultName": "xxxgmail.com"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $fromAI('after', 'Earliest instant to include (ISO 8601 datetime), inclusive') }}",
+          "timeMax": "={{ $fromAI('before', 'Latest instant to include (ISO 8601 datetime), inclusive') }}",
+          "singleEvents": true,
+          "query": "={{ $fromAI('query', 'Optional text to filter events in the calendar; use empty string if not needed') }}"
+        }
+      },
+      "id": "a465f94a-e3e9-4b4c-b168-ccbdccef343d",
+      "name": "Store_Events_Calendar",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.2,
+      "position": [
+        -32,
+        400
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "9V1PU7bmVbrR39yp",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web_Search_SerpAPI": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URL_Page_Fetcher": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store_Events_Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "adba8b78-f60e-45a8-a265-50d92c55ca2d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f2ceeac86dfdb6488db096a6b2676f20da072561a38e5079bddbafaf3f86ba98"
+  },
+  "id": "7vyDzoKPKfmaa63k",
+  "tags": []
+}
